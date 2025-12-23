@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>汽車貸款月付款試算</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial; margin:0; background:#f6f7f9;}
+    .wrap{max-width:520px; margin:0 auto; padding:16px;}
+    .card{background:#fff; border-radius:16px; padding:16px; box-shadow:0 6px 20px rgba(0,0,0,.06);}
+    h1{font-size:18px; margin:0 0 12px;}
+    label{display:block; font-size:13px; margin:12px 0 6px; color:#333;}
+    input,select{width:100%; padding:12px; border-radius:12px; border:1px solid #d9dde3; font-size:16px; outline:none;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .result{margin-top:14px; padding:12px; background:#f2f4f7; border-radius:12px;}
+    .big{font-size:22px; font-weight:700; margin:6px 0;}
+    .muted{color:#555; font-size:13px; line-height:1.5;}
+    button,a.btn{display:block; width:100%; border:0; padding:12px; border-radius:12px; font-size:16px; font-weight:700; margin-top:12px; cursor:pointer; text-align:center; text-decoration:none;}
+    button{background:#111; color:#fff;}
+    a.btn{background:#06c755; color:#fff;}
+    .hint{font-size:12px; color:#666; margin-top:10px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>汽車貸款月付款試算（本息平均攤還）</h1>
+
+      <label>貸款金額（元）</label>
+      <input id="principal" type="number" inputmode="numeric" placeholder="例如 1200000" value="1200000"/>
+
+      <div class="row">
+        <div>
+          <label>期數（月）</label>
+          <select id="months">
+            <option value="24">24</option>
+            <option value="36">36</option>
+            <option value="48">48</option>
+            <option value="60" selected>60</option>
+            <option value="72">72</option>
+            <option value="84">84</option>
+          </select>
+        </div>
+        <div>
+          <label>年利率（%）</label>
+          <input id="apr" type="number" step="0.01" inputmode="decimal" placeholder="例如 3.5" value="3.5"/>
+        </div>
+      </div>
+
+      <div class="result">
+        <div class="muted">預估月付款（含利息）</div>
+        <div class="big" id="monthly">—</div>
+        <div class="muted" id="details">—</div>
+      </div>
+
+      <button id="recalc">立即試算</button>
+
+      <!-- 把結果帶回 LINE 對話：把 YOUR_LINE_OA_ID 換成你的官方帳號 ID（含 @） -->
+      <a id="lineShare" class="btn" href="#" target="_blank" rel="noopener">把結果傳給 Hauer 詢問</a>
+
+      <div class="hint">
+        ※ 此試算為估算值，實際核貸利率、手續費、設定費等以金融機構與核准條件為準。
+      </div>
+    </div>
+  </div>
+
+<script>
+  const fmt = (n) => new Intl.NumberFormat('zh-Hant-TW').format(Math.round(n));
+  function calcMonthly(P, months, aprPct){
+    const n = months;
+    const r = (aprPct/100)/12; // monthly rate
+    if (!isFinite(P) || P <= 0 || !isFinite(n) || n <= 0) return null;
+
+    // 0% 特例
+    if (!isFinite(r) || r <= 0) {
+      const m = P / n;
+      return { monthly:m, total:P, interest:0 };
+    }
+
+    // 本息平均攤還
+    const pow = Math.pow(1+r, n);
+    const monthly = P * r * pow / (pow - 1);
+    const total = monthly * n;
+    const interest = total - P;
+    return { monthly, total, interest };
+  }
+
+  function update(){
+    const P = Number(document.getElementById('principal').value);
+    const n = Number(document.getElementById('months').value);
+    const apr = Number(document.getElementById('apr').value);
+
+    const out = calcMonthly(P, n, apr);
+    const monthlyEl = document.getElementById('monthly');
+    const detailsEl = document.getElementById('details');
+
+    if (!out) {
+      monthlyEl.textContent = '—';
+      detailsEl.textContent = '請輸入正確金額與期數';
+      return;
+    }
+    monthlyEl.textContent = `NT$ ${fmt(out.monthly)} / 月`;
+    detailsEl.textContent = `總還款 NT$ ${fmt(out.total)}（總利息約 NT$ ${fmt(out.interest)}）`;
+
+    // 產生帶結果的 LINE 連結
+    const msg = `我剛在「汽車貸款月付款試算」算了一下：\n` +
+                `貸款金額：NT$ ${fmt(P)}\n期數：${n} 期\n年利率：${apr}%\n` +
+                `預估月付（含利息）：NT$ ${fmt(out.monthly)} / 月\n` +
+                `想請你幫我看適合的方案。`;
+
+    // ✅ 方式1：用 LINE 的 share target picker（最簡單、跨裝置）
+    const shareUrl = "https://social-plugins.line.me/lineit/share?text=" + encodeURIComponent(msg);
+
+    // ✅ 方式2：直接開你的 OA 對話（需換成你的 OA ID，例：@bmw_hauer）
+    // const oaId = "@YOUR_LINE_OA_ID";
+    // const shareUrl = "https://line.me/R/oaMessage/" + encodeURIComponent(oaId) + "/?" + encodeURIComponent(msg);
+
+    document.getElementById('lineShare').href = shareUrl;
+  }
+
+  document.getElementById('recalc').addEventListener('click', update);
+  ['principal','months','apr'].forEach(id => {
+    document.getElementById(id).addEventListener('input', update);
+    document.getElementById(id).addEventListener('change', update);
+  });
+
+  update();
+</script>
+</body>
+</html>
